@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "969256231743",
+    "project_id": "mobile-tps",
+    "storage_bucket": "mobile-tps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:969256231743:android:0d67c67ccd60a510b3e98a",
+        "android_client_info": {
+          "package_name": "com.rudehd.tps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJW4VxM6X9IX6rWzQ4pd0HJ0Bk4BUYqdA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
