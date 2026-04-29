@@ -70,6 +70,11 @@ public class AuthManager : MonoBehaviour
             else
             {
                 user = task.Result.User;
+
+                UserData.FirebaseUser = user;
+                UserData.Uid = user.UserId;
+                UserData.Email = user.Email;
+
                 SceneManager.LoadScene("Lobby");
             }
        });

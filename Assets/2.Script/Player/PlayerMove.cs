@@ -6,8 +6,6 @@ using Photon.Pun;
 public class PlayerMove : MonoBehaviourPun
 {
     [Header("Aim")]
-    //[SerializeField]
-    //Camera AimCam;
     [SerializeField]
     GameObject aimImage;
 
@@ -24,11 +22,12 @@ public class PlayerMove : MonoBehaviourPun
 
 
 
-    bool isBorder; //º® Ãæµ¹ 
+    bool isBorder; //ï¿½ï¿½ ï¿½æµ¹ 
     bool isJump;
     bool isDodge;
     bool isFire;
     bool isReload;
+    bool isDead;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -38,7 +37,7 @@ public class PlayerMove : MonoBehaviourPun
     Animator ani;
     Rigidbody rigid;
 
-
+    //ï¿½ï¿½ï¿½ Panel
     
 
     private void Awake()
@@ -50,6 +49,8 @@ public class PlayerMove : MonoBehaviourPun
 
     private void Update()
     {
+        if (GameManager.Instance != null && GameManager.Instance.IsMatchEnded)
+            return;
         fireTime += Time.deltaTime;
         if (photonView.IsMine)
         {
@@ -69,7 +70,7 @@ public class PlayerMove : MonoBehaviourPun
     { 
         isBorder = Physics.Raycast(playerBody.transform.position, playerBody.transform.forward, 5, LayerMask.GetMask("Wall"));
     }
-    void FreezeRotation() //¹°¸®Ãæµ¹ ¹ö±× ¹æÁö
+    void FreezeRotation() //ï¿½ï¿½ï¿½ï¿½ï¿½æµ¹ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     {
         rigid.angularVelocity = Vector3.zero;
     }
@@ -90,11 +91,13 @@ public class PlayerMove : MonoBehaviourPun
         targetAim.y = transform.position.y;
         Vector3 aimDir = (targetAim - transform.position).normalized;
 
-        playerBody.forward = aimDir; //¿¡ÀÓ ¹æÇâ ¹Ù¶óº¸±â
+        playerBody.forward = aimDir; //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸±ï¿½
     }
 
     public void Move(Vector2 inputDir) 
     {
+        if (isDead) 
+            return;
         moveVec = new Vector3 (inputDir.x,0,inputDir.y);
         bool isMove = moveVec.magnitude != 0;
         if (isDodge)
@@ -116,7 +119,7 @@ public class PlayerMove : MonoBehaviourPun
             float speedMultiplier = 1f;
             if (Mathf.Abs(inputDir.x) > Mathf.Abs(inputDir.y))
             {
-                // ¿· ÀÌµ¿ÀÌ ´õ Å« °æ¿ì ¡æ °È´Â ¼Óµµ
+                
                 speedMultiplier = 0.5f;
             }
             if(!isBorder)
@@ -125,7 +128,7 @@ public class PlayerMove : MonoBehaviourPun
         }
         if (photonView.IsMine)
         {
-            // °È±â, ´Þ¸®±â ÆÇº°
+           
             if (inputDir.magnitude == 0)
             {
                 ani.SetBool("IsWalk", false);
@@ -147,7 +150,10 @@ public class PlayerMove : MonoBehaviourPun
 
     public void Jump()
     {
-        if(moveVec == Vector3.zero && !isJump)
+        if (!CanControl()) return;
+        if (isDead)
+            return;
+        if (moveVec == Vector3.zero && !isJump)
         {
             rigid.AddForce(Vector3.up * jumpPower, ForceMode.Impulse);
             if (photonView.IsMine)
@@ -161,6 +167,9 @@ public class PlayerMove : MonoBehaviourPun
     }
     public void Fire()
     {
+        if (!CanControl()) return;
+        if (isDead)
+            return;
         isFire = fireTime > 0.3f;
         if(!isDodge && isFire)
         {
@@ -177,6 +186,9 @@ public class PlayerMove : MonoBehaviourPun
 
     public void Reload()
     {
+        if (!CanControl()) return;
+        if (isDead)
+            return;
         if (weapon.curAmmo == weapon.maxAmmo) return;
 
         if(!isJump && !isDodge )
@@ -193,7 +205,10 @@ public class PlayerMove : MonoBehaviourPun
  
     public void Dodge()
     {
-        if(!isJump  && !isDodge /*&& moveVec != Vector3.zero*/)
+        if (!CanControl()) return;
+        if (isDead)
+            return;
+        if (!isJump  && !isDodge )
         {
             dodgeVec = moveVec;
             speed *= 2;
@@ -211,6 +226,7 @@ public class PlayerMove : MonoBehaviourPun
 
     public void Land()
     {
+        if (!CanControl()) return;
         if (photonView.IsMine)
         {
             ani.SetBool("IsJump", false);
@@ -220,15 +236,21 @@ public class PlayerMove : MonoBehaviourPun
     }
     public void Dead()
     {
-        if (photonView.IsMine)
-        {
-            photonView.RPC("PlayDeadAnim", RpcTarget.All);
-        }
+        if (!photonView.IsMine) return;
+
+        photonView.RPC(nameof(RpcSetDeadState), RpcTarget.All, true);
     }
     [PunRPC]
-    void PlayDeadAnim()
+    void RpcSetDeadState(bool dead)
     {
-        ani.SetTrigger("DoDie");
+        isDead = dead;
+        ani.SetBool("IsDie", dead);
+
+        if (dead)
+        {
+            ani.ResetTrigger("DoDie");
+            ani.SetTrigger("DoDie");
+        }
     }
     void DoDodgeOut()
     {
@@ -240,5 +262,34 @@ public class PlayerMove : MonoBehaviourPun
         weapon.curAmmo = weapon.maxAmmo;
         isReload = false;
     }
+    [PunRPC]
+    public void RpcRespawn(Vector3 pos, Quaternion rot)
+    {
+        transform.SetPositionAndRotation(pos, rot);
+        rigid.linearVelocity = Vector3.zero;
+        rigid.angularVelocity = Vector3.zero;
 
+        ani.ResetTrigger("DoDie");
+        ani.SetBool("IsDie", false);
+        isDead = false;
+
+        weapon.curAmmo = weapon.maxAmmo;
+
+        var col = GetComponentInChildren<PlayerCollision>();
+        if (col != null)
+            col.ResetAfterRespawn();
+    }
+    bool CanControl()
+    {
+        return !isDead && GameManager.Instance != null && !GameManager.Instance.IsMatchEnded;
+    }
+    [PunRPC]
+    public void RpcDamageFlash()
+    {
+        var col = GetComponentInChildren<PlayerCollision>();
+        if (col != null)
+        {
+            col.PlayDamageFlash();
+        }
+    }
 }

@@ -36,9 +36,7 @@ public class JoyStick : MonoBehaviour,  IBeginDragHandler, IDragHandler, IEndDra
         isInput = true;
 
     }
-    //왜 드래그로안하고 update문에서 호출하는지?
-    //오브젝트를 클릭해서 드래그하는 도중에 들어오는 이벤트
-    //하지만 클릭을 유지한 상태로 마우스를 멈추면 이벤트가 들어오지않음
+    
     public void OnDrag(PointerEventData eventData)
     {
         ControlJoyStickLever(eventData);
